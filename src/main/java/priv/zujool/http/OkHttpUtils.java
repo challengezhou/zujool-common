@@ -71,8 +71,8 @@ public class OkHttpUtils {
         } catch (IOException e) {
             log.error("==> getFileBytes [{}] error", url, e);
             return null;
-        }finally {
-            if (null != response){
+        } finally {
+            if (null != response) {
                 response.close();
             }
         }
@@ -124,7 +124,7 @@ public class OkHttpUtils {
         StringBuilder sb = new StringBuilder();
         if (null != fileBodies) {
             for (FileBody fileBody : fileBodies) {
-                RequestBody requestBody = RequestBody.create(MediaType.parse(fileBody.getMediaType()), fileBody.fileBytes);
+                RequestBody requestBody = RequestBody.create(fileBody.fileBytes, MediaType.parse(fileBody.getMediaType()));
                 builder.addFormDataPart(fileBody.name, fileBody.fileName, requestBody);
                 sb.append("[file]").append(fileBody.name).append(":").append(fileBody.fileName).append(",");
             }
@@ -218,7 +218,7 @@ public class OkHttpUtils {
         if (null == okHttpClient) {
             okHttpClient = CLIENT;
         }
-        RequestBody requestBody = RequestBody.create(mediaType, body);
+        RequestBody requestBody = RequestBody.create(body, mediaType);
         Request request = new Request.Builder()
                 .url(url)
                 .post(requestBody)
