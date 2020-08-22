@@ -58,8 +58,9 @@ public class OkHttpUtils {
                 .url(url)
                 .addHeader("Connection", "close")
                 .build();
+        Response response = null;
         try {
-            Response response = defaultClient().newCall(request).execute();
+            response = defaultClient().newCall(request).execute();
             ResponseBody body = response.body();
             if (body == null) {
                 return null;
@@ -68,8 +69,12 @@ public class OkHttpUtils {
             log.info("==> Response [req_id:{}] size {}", reqId, bytes.length);
             return bytes;
         } catch (IOException e) {
-            log.error("getFileBytes [{}] error", url, e);
+            log.error("==> getFileBytes [{}] error", url, e);
             return null;
+        }finally {
+            if (null != response){
+                response.close();
+            }
         }
     }
 
@@ -228,36 +233,36 @@ public class OkHttpUtils {
         HttpUrl url = request.url();
         String method = request.method();
         if (logRequestParam) {
-            log.info("==> Request [{}][req_id:{}],METHOD:{},body:{}", url, reqId, method, "POST".equals(method) ? "\n" + bodyStr : "");
+            log.info("==> Request [{}] to [{}][{}],body:{}", method, url, reqId, "POST".equals(method) ? "\n" + bodyStr : "");
         } else {
-            log.info("==> Request [{}][req_id:{}],METHOD:{}", url, reqId, method);
+            log.info("==> Request [{}] to [{}][{}],METHOD:{}", method, url, reqId);
         }
-
-        Response response;
+        Response response = null;
         try {
             response = client.newCall(request).execute();
+            String errorPrefix = "Unexpected code ";
+            if (!response.isSuccessful()) {
+                throw new IOException(errorPrefix + response);
+            }
+            ResponseBody body = response.body();
+            if (body == null) {
+                return "";
+            }
+            String resp = body.string();
+            if (logResult) {
+                log.info("==> Response [{}] is \n{}", reqId, resp);
+            } else {
+                log.info("==> Response [{}] size {}", reqId, resp.length());
+            }
+            return resp;
         } catch (IOException e) {
-            log.error("==> Error when process [{}][req_id:{}],msg:{}", url, reqId, e.getMessage());
+            log.error("==> Error when process [{}][{}],msg:{}", url, reqId, e.getMessage());
             throw e;
         } finally {
-            REQ_CONTEXT_PROVIDER.get().setLogResult(true);
+            if (null != response) {
+                response.close();
+            }
         }
-
-        String errorPrefix = "Unexpected code ";
-        if (!response.isSuccessful()) {
-            throw new IOException(errorPrefix + response);
-        }
-        ResponseBody body = response.body();
-        if (body == null) {
-            return "";
-        }
-        String resp = body.string();
-        if (logResult) {
-            log.info("==> Response [req_id:{}] is \n{}", reqId, resp);
-        } else {
-            log.info("==> Response [req_id:{}] size {}", reqId, resp.length());
-        }
-        return resp;
     }
 
     /**
