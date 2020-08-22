@@ -259,6 +259,7 @@ public class OkHttpUtils {
             log.error("==> Error when process [{}][{}],msg:{}", url, reqId, e.getMessage());
             throw e;
         } finally {
+            REQ_CONTEXT_PROVIDER.get().setLogResult(true);
             if (null != response) {
                 response.close();
             }
