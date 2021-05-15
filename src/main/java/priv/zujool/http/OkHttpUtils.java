@@ -14,7 +14,6 @@ import java.net.Proxy;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -26,8 +25,6 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class OkHttpUtils {
 
-    private static final Random REQUEST_ID_GENERATOR = new Random();
-
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
     private static final MediaType MEDIA_TYPE_XML = MediaType.parse("application/xml; charset=utf-8");
 
@@ -37,6 +34,17 @@ public class OkHttpUtils {
     private static final int WRITE_TIMEOUT = 0;
     private static final int READ_TIMEOUT = 0;
 
+    private static final GlobalConfig globalConfig = new GlobalConfig();
+
+    @Getter
+    @Setter
+    private static class GlobalConfig {
+        private Proxy proxy = null;
+    }
+
+    public static void globalSetProxy(Proxy proxy) {
+        globalConfig.proxy = proxy;
+    }
 
     @Setter
     @Getter
@@ -58,9 +66,7 @@ public class OkHttpUtils {
                 .url(url)
                 .addHeader("Connection", "close")
                 .build();
-        Response response = null;
-        try {
-            response = defaultClient().newCall(request).execute();
+        try (Response response = defaultClient().newCall(request).execute()) {
             ResponseBody body = response.body();
             if (body == null) {
                 return null;
@@ -71,15 +77,11 @@ public class OkHttpUtils {
         } catch (IOException e) {
             log.error("==> getFileBytes [{}] error", url, e);
             return null;
-        } finally {
-            if (null != response) {
-                response.close();
-            }
         }
     }
 
     private static OkHttpClient defaultClient() {
-        return getClientWithParams(CONNECT_TIMEOUT, WRITE_TIMEOUT, READ_TIMEOUT, null);
+        return getClientWithParams(CONNECT_TIMEOUT, WRITE_TIMEOUT, READ_TIMEOUT, globalConfig.proxy);
     }
 
     /**
@@ -235,11 +237,9 @@ public class OkHttpUtils {
         if (logRequestParam) {
             log.info("==> Request [{}] to [{}][{}],body:{}", method, url, reqId, "POST".equals(method) ? "\n" + bodyStr : "");
         } else {
-            log.info("==> Request [{}] to [{}][{}],METHOD:{}", method, url, reqId);
+            log.info("==> Request [{}] to [{}][{}]", method, url, reqId);
         }
-        Response response = null;
-        try {
-            response = client.newCall(request).execute();
+        try (Response response = client.newCall(request).execute()) {
             String errorPrefix = "Unexpected code ";
             if (!response.isSuccessful()) {
                 throw new IOException(errorPrefix + response);
@@ -250,7 +250,7 @@ public class OkHttpUtils {
             }
             String resp = body.string();
             if (logResult) {
-                log.info("==> Response [{}] is \n{}", reqId, resp);
+                log.info("==> Response [{}] is {}", reqId, resp);
             } else {
                 log.info("==> Response [{}] size {}", reqId, resp.length());
             }
@@ -260,9 +260,6 @@ public class OkHttpUtils {
             throw e;
         } finally {
             REQ_CONTEXT_PROVIDER.get().setLogResult(true);
-            if (null != response) {
-                response.close();
-            }
         }
     }
 
@@ -307,14 +304,14 @@ public class OkHttpUtils {
         final Request request = new Request.Builder().url(fileUrl).build();
         final Call call = getClientWithParams(CONNECT_TIMEOUT, WRITE_TIMEOUT, READ_TIMEOUT, proxy).newCall(request);
         Response response = call.execute();
-        return Optional.ofNullable(response)
+        return Optional.of(response)
                 .map(Response::body)
                 .map(ResponseBody::byteStream)
                 .orElseThrow(() -> new RuntimeException("InputStream is null"));
     }
 
     private static String getRequestId() {
-        return "" + REQUEST_ID_GENERATOR.nextInt(Integer.MAX_VALUE);
+        return "" + System.currentTimeMillis();
     }
 
     @Getter
