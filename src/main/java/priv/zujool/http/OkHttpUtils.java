@@ -91,7 +91,11 @@ public class OkHttpUtils {
      * @return 响应字符串
      */
     public static String getResult(String url) throws IOException {
-        return getResultWithClient(url, defaultClient());
+        return getResultWithClient(url, null, defaultClient());
+    }
+
+    public static String getResult(String url, Map<String, String> headers) throws IOException {
+        return getResultWithClient(url, headers, defaultClient());
     }
 
     /**
@@ -102,7 +106,11 @@ public class OkHttpUtils {
      * @return 响应字符串
      */
     public static String postJson(String url, String json) throws IOException {
-        return postJsonWithClient(url, json, defaultClient());
+        return postJsonWithClient(url, json, null, defaultClient());
+    }
+
+    public static String postJson(String url, String json, Map<String, String> headers) throws IOException {
+        return postJsonWithClient(url, json, headers, defaultClient());
     }
 
     /**
@@ -113,14 +121,22 @@ public class OkHttpUtils {
      * @return 响应字符串
      */
     public static String postForm(String url, Map<String, String> params) throws IOException {
-        return postFormWithClient(url, params, defaultClient());
+        return postFormWithClient(url, params, null, defaultClient());
+    }
+
+    public static String postForm(String url, Map<String, String> params, Map<String, String> headers) throws IOException {
+        return postFormWithClient(url, params, headers, defaultClient());
     }
 
     public static String postMultipart(String url, List<FileBody> fileBodies, Map<String, String> dataMap) throws IOException {
-        return postMultipartWithClient(url, fileBodies, dataMap, defaultClient());
+        return postMultipartWithClient(url, fileBodies, dataMap, null, defaultClient());
     }
 
-    public static String postMultipartWithClient(String url, List<FileBody> fileBodies, Map<String, String> dataMap, OkHttpClient okHttpClient) throws IOException {
+    public static String postMultipart(String url, List<FileBody> fileBodies, Map<String, String> dataMap, Map<String, String> headers) throws IOException {
+        return postMultipartWithClient(url, fileBodies, dataMap, headers, defaultClient());
+    }
+
+    public static String postMultipartWithClient(String url, List<FileBody> fileBodies, Map<String, String> dataMap, Map<String, String> headers, OkHttpClient okHttpClient) throws IOException {
         MultipartBody.Builder builder = new MultipartBody.Builder();
         builder.setType(MultipartBody.FORM);
         StringBuilder sb = new StringBuilder();
@@ -141,14 +157,18 @@ public class OkHttpUtils {
                 }
             }
         }
-        Request request = new Request.Builder()
+        Request.Builder requestBuilder = new Request.Builder()
                 .url(url)
-                .post(builder.build())
-                .build();
+                .post(builder.build());
+        if (null != headers) {
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                requestBuilder.header(entry.getKey(), entry.getValue());
+            }
+        }
         if (null == okHttpClient) {
             okHttpClient = CLIENT;
         }
-        return processCall(okHttpClient, request, sb.toString());
+        return processCall(okHttpClient, requestBuilder.build(), sb.toString());
     }
 
     /**
@@ -157,12 +177,22 @@ public class OkHttpUtils {
      * @param url 请求的链接
      * @return 响应字符串
      */
-    public static String getResultWithClient(String url, OkHttpClient okHttpClient) throws IOException {
-        Request request = new Request.Builder().url(url).build();
+    public static String getResultWithClient(String url, Map<String, String> headers, OkHttpClient okHttpClient) throws IOException {
+        Request.Builder requestBuilder = new Request.Builder()
+                .url(url);
+        if (null != headers) {
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                requestBuilder.header(entry.getKey(), entry.getValue());
+            }
+        }
         if (null == okHttpClient) {
             okHttpClient = CLIENT;
         }
-        return processCall(okHttpClient, request, null);
+        return processCall(okHttpClient, requestBuilder.build(), null);
+    }
+
+    public static String getResultWithClient(String url, OkHttpClient okHttpClient) throws IOException {
+        return getResultWithClient(url, null, okHttpClient);
     }
 
     /**
@@ -172,7 +202,7 @@ public class OkHttpUtils {
      * @param params 参数 map
      * @return 响应字符串
      */
-    public static String postFormWithClient(String url, Map<String, String> params, OkHttpClient okHttpClient) throws IOException {
+    public static String postFormWithClient(String url, Map<String, String> params, Map<String, String> headers, OkHttpClient okHttpClient) throws IOException {
         FormBody.Builder builder = new FormBody.Builder();
         StringBuilder sb = new StringBuilder();
         if (null != params) {
@@ -184,14 +214,18 @@ public class OkHttpUtils {
             }
         }
         RequestBody body = builder.build();
-        Request request = new Request.Builder()
+        Request.Builder requestBuilder = new Request.Builder()
                 .url(url)
-                .post(body)
-                .build();
+                .post(body);
+        if (null != headers) {
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                requestBuilder.header(entry.getKey(), entry.getValue());
+            }
+        }
         if (null == okHttpClient) {
             okHttpClient = CLIENT;
         }
-        return processCall(okHttpClient, request, sb.toString());
+        return processCall(okHttpClient, requestBuilder.build(), sb.toString());
     }
 
     /**
@@ -201,8 +235,12 @@ public class OkHttpUtils {
      * @param json json字符串
      * @return 响应字符串
      */
+    public static String postJsonWithClient(String url, String json, Map<String, String> headers, OkHttpClient okHttpClient) throws IOException {
+        return postBodyWithClient(url, json, MEDIA_TYPE_JSON, headers, okHttpClient);
+    }
+
     public static String postJsonWithClient(String url, String json, OkHttpClient okHttpClient) throws IOException {
-        return postBodyWithClient(url, json, MEDIA_TYPE_JSON, okHttpClient);
+        return postBodyWithClient(url, json, MEDIA_TYPE_JSON, null, okHttpClient);
     }
 
     /**
@@ -213,19 +251,27 @@ public class OkHttpUtils {
      * @return 响应字符串
      */
     public static String postXmlWithClient(String url, String xml, OkHttpClient okHttpClient) throws IOException {
-        return postBodyWithClient(url, xml, MEDIA_TYPE_XML, okHttpClient);
+        return postBodyWithClient(url, xml, MEDIA_TYPE_XML, null, okHttpClient);
     }
 
-    private static String postBodyWithClient(String url, String body, MediaType mediaType, OkHttpClient okHttpClient) throws IOException {
+    public static String postXmlWithClient(String url, String xml, Map<String, String> headers, OkHttpClient okHttpClient) throws IOException {
+        return postBodyWithClient(url, xml, MEDIA_TYPE_XML, headers, okHttpClient);
+    }
+
+    private static String postBodyWithClient(String url, String body, MediaType mediaType, Map<String, String> headers, OkHttpClient okHttpClient) throws IOException {
         if (null == okHttpClient) {
             okHttpClient = CLIENT;
         }
         RequestBody requestBody = RequestBody.create(body, mediaType);
-        Request request = new Request.Builder()
+        Request.Builder requestBuilder = new Request.Builder()
                 .url(url)
-                .post(requestBody)
-                .build();
-        return processCall(okHttpClient, request, body);
+                .post(requestBody);
+        if (null != headers) {
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                requestBuilder.header(entry.getKey(), entry.getValue());
+            }
+        }
+        return processCall(okHttpClient, requestBuilder.build(), body);
     }
 
     private static String processCall(OkHttpClient client, Request request, String bodyStr) throws IOException {
