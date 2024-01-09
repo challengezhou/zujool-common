@@ -228,6 +228,10 @@ public class OkHttpUtils {
         return processCall(okHttpClient, requestBuilder.build(), sb.toString());
     }
 
+    public static String postFormWithClient(String url, Map<String, String> params, OkHttpClient okHttpClient) throws IOException {
+        return postFormWithClient(url, params, null, okHttpClient);
+    }
+
     /**
      * json格式数据的post请求
      *
